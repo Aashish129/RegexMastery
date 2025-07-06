@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Regex Tutorial: Full Book</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Calm Harmony (Neutrals with Teal Accent) -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive textbook. A dropdown at the top allows users to select a chapter. Once a chapter is selected, a fixed sidebar dynamically populates with links to sections within that chapter, enabling quick, non-linear exploration. The main content area then displays the selected chapter's instructional text, interactive regex playgrounds, LLM-powered explanation/generation features, and exercises. This structure was chosen to provide a clear hierarchy for multi-chapter content while retaining the hands-on, single-page learning experience for each chapter. The interactive playgrounds and LLM features are central to user understanding and engagement. -->
+    <!-- Visualization & Content Choices: The primary "visualization" remains dynamic text highlighting within the interactive playgrounds, which provides immediate visual feedback on regex pattern matches. This is crucial for understanding regex behavior. LLM integrations offer textual explanations of patterns and generate new patterns based on descriptions, directly supporting the learning objectives. The application also includes interactive exercises with instant text-based feedback. No Chart.js or Plotly.js are used as the nature of the content (text patterns) is best served by direct text manipulation and highlighting. All visual elements (icons, layout) are achieved using HTML, Tailwind CSS, and Unicode characters. No SVG graphics or Mermaid JS are used, ensuring a lightweight and performant application focused on core regex interaction. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .highlight {
+            background-color: #A7F3D0; /* Tailwind green-200 */
+            border-radius: 3px;
+            padding: 1px 2px;
+            font-weight: 500;
+        }
+        .nav-active {
+            background-color: #14B8A6; /* Tailwind teal-500 */
+            color: white;
+            font-weight: 600;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-neutral-50 text-neutral-800">
+
+    <div class="flex">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sticky top-0 h-screen w-64 bg-white border-r border-neutral-200 p-6 hidden lg:block overflow-y-auto">
+            <h2 class="text-lg font-bold text-teal-700 mb-6">Chapter Sections</h2>
+            <nav id="nav-menu" class="space-y-2"></nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="w-full p-4 md:p-8 lg:p-12">
+            <div class="max-w-4xl mx-auto">
+                <!-- Header -->
+                <header class="mb-12 border-b border-neutral-200 pb-8">
+                    <h1 class="text-4xl md:text-5xl font-bold text-neutral-900 mb-4">Regex: Zero to Expert with Good Hands</h1>
+                    <p class="text-lg text-neutral-600 mb-4">Welcome to your interactive guide to Regular Expressions. Select a chapter to begin your journey!</p>
+                    <div class="flex items-center gap-4">
+                        <label for="chapter-select" class="font-semibold text-neutral-700">Select Chapter:</label>
+                        <select id="chapter-select" class="p-2 border border-neutral-300 rounded-md bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <h2 id="current-chapter-title" class="text-3xl md:text-4xl font-bold text-neutral-800 mt-6"></h2>
+                </header>
+
+                <!-- Dynamic Content Sections -->
+                <div id="content-sections" class="space-y-16"></div>
+
+                <!-- Regex Generator Section -->
+                <section id="regex-generator" class="mt-16 pt-8 border-t border-neutral-200">
+                    <h2 class="text-3xl font-bold text-neutral-900 mb-6">✨ Regex Generator</h2>
+                    <p class="text-neutral-600 mb-6">Describe what you want to match, and our AI will suggest a Regex pattern for you!</p>
+                    <div class="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
+                        <div class="mb-4">
+                            <label for="generator-prompt" class="block text-sm font-medium text-neutral-700 mb-1">Describe your desired pattern:</label>
+                            <textarea id="generator-prompt" rows="3" placeholder="e.g., 'match email addresses', 'find phone numbers in XXX-XXX-XXXX format'" class="w-full p-2 border border-neutral-300 rounded-md font-mono text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"></textarea>
+                        </div>
+                        <button id="generate-regex-btn" class="w-full sm:w-auto bg-teal-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-teal-700 transition-colors">✨ Generate Regex</button>
+                        <div id="generator-result" class="mt-4 p-3 bg-neutral-50 rounded-md border border-neutral-200 min-h-[4rem] text-neutral-700 font-mono text-sm overflow-auto"></div>
+                    </div>
+                </section>
+
+                <!-- Summary Section -->
+                <section id="summary" class="mt-16 pt-8 border-t border-neutral-200">
+                     <h2 class="text-3xl font-bold text-neutral-900 mb-6">Chapter Summary</h2>
+                     <p id="summary-intro" class="text-neutral-600 mb-6"></p>
+                     <ul id="summary-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></ul>
+                </section>
+
+                <!-- Exercises Section -->
+                <section id="exercises" class="mt-16 pt-8 border-t border-neutral-200">
+                    <h2 class="text-3xl font-bold text-neutral-900 mb-6">Chapter Exercises</h2>
+                    <p id="exercises-intro" class="text-neutral-600 mb-6"></p>
+                    <div id="exercise-container" class="space-y-8"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const bookData = {
+            'chapter-1': {
+                title: 'Chapter 1: The Magic of Patterns - Your First Step into Regex',
+                sections: [
+                    {
+                        id: 'literal-matching',
+                        title: '1.1 Literal Matching',
+                        description: "The most straightforward way to match text is to simply type the characters you want to find. This is called literal matching. It's case-sensitive by default.",
+                        pattern: 'apple',
+                        text: 'I love to eat a red apple. An apple a day keeps the doctor away.'
+                    },
+                    {
+                        id: 'wildcard',
+                        title: '1.2 The Wildcard: The Dot (.)',
+                        description: "The dot (.) is a wildcard that matches any single character (except for a newline).",
+                        pattern: 'c.t',
+                        text: 'The cat sat on the mat. I bought a new cot. Is that a cut?'
+                    },
+                    {
+                        id: 'anchors',
+                        title: '1.3 Anchors: Start (^) and End ($)',
+                        description: "Anchors don't match characters, but positions. The caret (^) matches the beginning of a line, and the dollar sign ($) matches the end.",
+                        pattern: '^Your order #',
+                        text: 'Your order #123456 has been shipped.\nOrder #789012 is pending.\nYour order #998877 is complete.'
+                    },
+                    {
+                        id: 'character-classes',
+                        title: '1.4 Character Classes',
+                        description: "Character classes let you match specific types of characters. `\\d` for any digit, `\\w` for any word character (letters, numbers, underscore), `\\s` for whitespace, and `\\b` for a word boundary.",
+                        pattern: '\\bcat\\b',
+                        text: 'The cat sat on the mat. This is a category.'
+                    },
+                    {
+                        id: 'quantifiers',
+                        title: '1.5 Quantifiers',
+                        description: "Quantifiers specify how many times a character should appear. `*` (0 or more), `+` (1 or more), `?` (0 or 1), and `{n}` (exactly n times) are common.",
+                        pattern: '^Your order #\\d{6}',
+                        text: 'Your order #123456 has shipped.\nYour order #998877 is complete.\nYour order #12345 has a problem.'
+                    },
+                    {
+                        id: 'character-sets',
+                        title: '1.6 Character Sets ([])',
+                        description: "Square brackets `[]` let you define your own character set. For example, `gr[ae]y` matches 'grey' or 'gray'. A caret inside negates the set, like `[^0-9]` to match any non-digit.",
+                        pattern: 'gr[ae]y',
+                        text: 'The color can be grey or gray, but not green.'
+                    },
+                    {
+                        id: 'escaping',
+                        title: '1.7 Escaping (\\)',
+                        description: "To match a special character literally (like `.`, `*`, `?`), you must escape it with a backslash `\\`. For example, to find a literal dot, use `\\.`.",
+                        pattern: 'file\\.txt',
+                        text: 'My document is file.txt. Another is file-txt.'
+                    }
+                ],
+                summary: [
+                    { term: 'Literal Matching', def: 'Finding exact character sequences.' },
+                    { term: 'The Dot (.)', def: 'Matching any single character.' },
+                    { term: 'Anchors (^, $)', def: 'Matching the beginning and end of lines.' },
+                    { term: 'Character Classes (\\d, \\w, \\s)', def: 'Matching specific types of characters.' },
+                    { term: 'Quantifiers (*, +, {n})', def: 'Specifying how many times a pattern repeats.' },
+                    { term: 'Character Sets ([])', def: 'Defining your own groups of characters to match.' },
+                    { term: 'Escaping (\\)', def: 'Matching special Regex characters literally.' }
+                ],
+                exercises: [
+                    {
+                        prompt: "Match all occurrences of the word 'the' (case-sensitive).",
+                        text: "The dog barked, then the cat ran.",
+                        solution: '\\bthe\\b',
+                        expectedMatches: 2
+                    },
+                    {
+                        prompt: "Match any 3-letter word that starts with 'b' and ends with 'g'.",
+                        text: "big bug bag bog beg",
+                        solution: '\\bb\\wg\\b',
+                        expectedMatches: 5
+                    },
+                    {
+                        prompt: "Match lines that begin with 'Error:'.",
+                        text: "Error: File not found.\nWarning: Low disk space.\nError: Network issue.",
+                        solution: '^Error:.*$',
+                        flags: 'gm',
+                        expectedMatches: 2
+                    },
+                    {
+                        prompt: "Match any number that has exactly 5 digits.",
+                        text: "ID: 12345, Code: 678901, Pin: 9876",
+                        solution: '\\b\\d{5}\\b',
+                        expectedMatches: 1
+                    },
+                    {
+                        prompt: "Match a price that starts with a dollar sign, followed by one or more digits, a literal dot, and exactly two digits.",
+                        text: "Item A: $12.99, Item B: $5.00, Item C: $1.2, Item D: $100",
+                        solution: '\\$\\d+\\.\\d{2}\\b',
+                        expectedMatches: 2
+                    }
+                ]
+            },
+            'chapter-2': {
+                title: 'Chapter 2: Mastering Character Sets and Ranges - Precision Matching',
+                sections: [
+                    {
+                        id: 'char-set-intro',
+                        title: '2.1 Beyond Basic Character Sets',
+                        description: 'Dive deeper into character sets, including ranges like `[a-z]` and special shorthand notations.',
+                        pattern: '[A-Za-z]',
+                        text: 'Hello World 123! Regex is fun.'
+                    },
+                    {
+                        id: 'negated-char-sets',
+                        title: '2.2 Negated Character Sets',
+                        description: 'Understand how to match characters NOT in a specific set by placing a caret `^` inside the square brackets, e.g., `[^aeiou]`.',
+                        pattern: '[^aeiouAEIOU]',
+                        text: 'This is a test sentence.'
+                    },
+                    {
+                        id: 'posix-classes',
+                        title: '2.3 POSIX Character Classes',
+                        description: 'Explore common POSIX character classes like `[[:digit:]]`, `[[:alpha:]]`, etc., for more portable patterns, often used in command-line tools.',
+                        pattern: '[[:digit:]]+',
+                        text: 'My ID is 12345. Version 2.0.'
+                    }
+                ],
+                summary: [
+                    { term: 'Character Sets []', def: 'Match any single character within the brackets.' },
+                    { term: 'Ranges [a-z]', def: 'Specify a range of characters (e.g., lowercase letters).' },
+                    { term: 'Negated Sets [^...]', def: 'Match any character NOT in the specified set.' },
+                    { term: 'POSIX Classes', def: 'Predefined character sets like `[:digit:]` for common types.' }
+                ],
+                exercises: [
+                    {
+                        prompt: "Match any uppercase letter.",
+                        text: "Hello World!",
+                        solution: '[A-Z]',
+                        expectedMatches: 2
+                    },
+                    {
+                        prompt: "Match any character that is NOT a vowel (a, e, i, o, u, case-insensitive).",
+                        text: "Programming is fun.",
+                        solution: '[^aeiou]', // Case-insensitive flag will handle AEIOU
+                        flags: 'gi',
+                        expectedMatches: 14 // Corrected count
+                    }
+                ]
+            },
+            'chapter-3': {
+                title: 'Chapter 3: Alternation and Grouping - "OR" and Basic Blocks',
+                sections: [
+                    {
+                        id: 'alternation-or',
+                        title: '3.1 Alternation: The "OR" Operator (|)',
+                        description: 'The pipe symbol `|` acts as an "OR" operator, allowing your regex to match one of several alternatives. For example, `cat|dog` matches either "cat" or "dog".',
+                        pattern: 'cat|dog|bird',
+                        text: 'I have a cat, a dog, and a bird.'
+                    },
+                    {
+                        id: 'basic-grouping',
+                        title: '3.2 Basic Grouping with Parentheses ()',
+                        description: 'Parentheses `()` group parts of a regex together, treating them as a single unit. This is essential for applying quantifiers to multiple characters (e.g., `(ha)+` matches "ha", "haha", "hahaha") or for applying alternation to a specific part of the pattern.',
+                        pattern: '(ha)+',
+                        text: 'hahaha, ha, hahaa'
+                    },
+                    {
+                        id: 'non-capturing-groups',
+                        title: '3.3 Non-Capturing Groups (?:)',
+                        description: 'While `()` creates a "capturing group" (which stores the matched text), `(?:...)` creates a "non-capturing group". It groups elements without storing the matched text, which can be useful for performance or when you only need to group for logical reasons, not for extraction.',
+                        pattern: '(?:red|blue) car',
+                        text: 'I like my red car and her blue car.'
+                    }
+                ],
+                summary: [
+                    { term: 'Alternation |', def: 'Matches one pattern OR another (e.g., `A|B`).' },
+                    { term: 'Grouping ()', def: 'Treats multiple characters as a single unit for quantifiers or logical grouping.' },
+                    { term: 'Non-Capturing (?:)', def: 'Groups elements without storing the matched text, improving efficiency.' }
+                ],
+                exercises: [
+                    {
+                        prompt: "Match either 'color' or 'colour'.",
+                        text: "The color is blue, the colour is red.",
+                        solution: 'colou?r',
+                        expectedMatches: 2
+                    },
+                    {
+                        prompt: "Match 'apple' or 'orange' followed by ' juice'.",
+                        text: "I want apple juice or orange juice.",
+                        solution: '(apple|orange) juice',
+                        expectedMatches: 2
+                    }
+                ]
+            },
+            // Minimal placeholders for remaining chapters
+            'chapter-4': {
+                title: 'Chapter 4: Capturing Groups - Extracting What You Need',
+                sections: [{ id: 'ch4-intro', title: '4.1 Introduction to Capturing', description: 'This chapter delves into capturing specific parts of your matches.', pattern: '(\\d+)', text: 'ID: 123, Name: ABC' }],
+                summary: [{ term: 'Capturing Groups', def: 'Use parentheses to extract specific portions of a match.' }],
+                exercises: [{ prompt: "Capture the numbers in 'Item 123, Price 45.67'.", text: "Item 123, Price 45.67", solution: '(\\d+(\\.\\d+)?)', expectedMatches: 2 }]
+            },
+            'chapter-5': {
+                title: 'Chapter 5: Backreferences - Reusing Matched Text',
+                sections: [{ id: 'ch5-intro', title: '5.1 Referring to Previous Matches', description: 'Learn to use backreferences to match repeated patterns.', pattern: '(\\w+)\\s+\\1', text: 'hello hello, world world' }],
+                summary: [{ term: 'Backreferences', def: 'Match a previously captured group.' }],
+                exercises: [{ prompt: "Find duplicated words like 'word word'.", text: "This is a test test string.", solution: '(\\b\\w+\\b)\\s+\\1', expectedMatches: 1 }]
+            },
+            'chapter-6': {
+                title: 'Chapter 6: Lookarounds - Matching Without Consuming',
+                sections: [{ id: 'ch6-intro', title: '6.1 Introduction to Lookarounds', description: 'Lookarounds assert a position without including the characters in the match.', pattern: '(?<=abc)def', text: 'abcdefg' }],
+                summary: [{ term: 'Lookaheads/Lookbehinds', def: 'Match based on context without consuming characters.' }],
+                exercises: [{ prompt: "Match 'USD' only if it's followed by a number.", text: "Price: USD100, EUR50", solution: 'USD(?=\\d)', expectedMatches: 1 }]
+            },
+            'chapter-7': {
+                title: 'Chapter 7: Regex Modifiers and Flags - Changing the Rules',
+                sections: [{ id: 'ch7-intro', title: '7.1 Case-Insensitive Matching', description: 'Understand how flags like `i` (case-insensitive) alter regex behavior.', pattern: 'apple', text: 'Apple, apple, APPLE' }],
+                summary: [{ term: 'Flags', def: 'Modify regex behavior (e.g., `i` for case-insensitive).' }],
+                exercises: [{ prompt: "Match 'test' case-insensitively.", text: "Test, test, TEST", solution: 'test', flags: 'gi', expectedMatches: 3 }]
+            },
+            'chapter-8': {
+                title: 'Chapter 8: Greediness and Laziness - Controlling Quantifier Behavior',
+                sections: [{ id: 'ch8-intro', title: '8.1 Greedy vs. Lazy Quantifiers', description: 'Explore how `*` and `*?` behave differently.', pattern: '<.*>', text: '<div><span>Hello</span></div>' }],
+                summary: [{ term: 'Greedy/Lazy', def: 'Control how much text a quantifier tries to match.' }],
+                exercises: [{ prompt: "Match content inside HTML tags lazily.", text: "<b>text</b><i>more</i>", solution: '<.*?>', expectedMatches: 4 }]
+            },
+            'chapter-9': {
+                title: 'Chapter 9: Atomic Groups and Possessive Quantifiers - Optimizing Performance',
+                sections: [{ id: 'ch9-intro', title: '9.1 Preventing Backtracking', description: 'Learn about atomic groups and possessive quantifiers for performance.', pattern: '(?>a+)a', text: 'aaa' }],
+                summary: [{ term: 'Atomic Groups', def: 'Prevent backtracking for performance.' }],
+                exercises: [{ prompt: "Match 'aaaa' (exactly four 'a's).", text: "aaaa", solution: 'a{4}', expectedMatches: 1 }]
+            },
+            'chapter-10': {
+                title: 'Chapter 10: Regex in Programming Languages - Your Code\'s Best Friend',
+                sections: [{ id: 'ch10-intro', title: '10.1 Python\'s `re` Module', description: 'Introduction to using regex in Python.', pattern: '\\d+', text: 'Python 3.9' }],
+                summary: [{ term: 'Programming APIs', def: 'How to use regex in various languages (Python, JS, etc.).' }],
+                exercises: [{ prompt: "Extract all numbers from a string in a programming context.", text: "Data: 10, 20, 30", solution: '\\d+', expectedMatches: 3 }]
+            },
+            'chapter-11': {
+                title: 'Chapter 11: Regex in Text Editors and Command Line Tools - Everyday Productivity',
+                sections: [{ id: 'ch11-intro', title: '11.1 Search and Replace', description: 'Using regex for powerful search and replace operations.', pattern: 'old', text: 'This is old text.' }],
+                summary: [{ term: 'Tools Integration', def: 'Applying regex in editors and command line.' }],
+                exercises: [{ prompt: "Find and replace 'color' with 'colour'.", text: "My favorite color is red.", solution: 'color', expectedMatches: 1 }]
+            },
+            'chapter-12': {
+                title: 'Chapter 12: Debugging and Optimizing Regex - Troubleshooting and Efficiency',
+                sections: [{ id: 'ch12-intro', title: '12.1 Common Regex Errors', description: 'Identify and fix common mistakes in regex patterns.', pattern: '(', text: 'test' }],
+                summary: [{ term: 'Debugging', def: 'Strategies for fixing broken regex patterns.' }],
+                exercises: [{ prompt: "Fix the pattern: `[a-z` to match lowercase letters.", text: "abc", solution: '[a-z]', expectedMatches: 3 }]
+            },
+            'chapter-13': {
+                title: 'Chapter 13: Data Validation - Ensuring Correct Inputs',
+                sections: [{ id: 'ch13-intro', title: '13.1 Validating Email Addresses', description: 'Use regex to validate common data formats like emails.', pattern: '^\\S+@\\S+\\.\\S+$', text: 'test@example.com' }],
+                summary: [{ term: 'Validation', def: 'Using regex to ensure data conforms to a specific format.' }],
+                exercises: [{ prompt: "Validate a simple 5-digit zip code.", text: "12345, 1234", solution: '^\\d{5}$', expectedMatches: 1 }]
+            },
+            'chapter-14': {
+                title: 'Chapter 14: Data Extraction and Transformation - Parsing and Reshaping Information',
+                sections: [{ id: 'ch14-intro', title: '14.1 Extracting Log Data', description: 'Extracting specific pieces of information from unstructured text.', pattern: 'Error: (.*)', text: 'Log: Error: File not found.' }],
+                summary: [{ term: 'Extraction', def: 'Pulling out specific data points from larger text.' }],
+                exercises: [{ prompt: "Extract names from 'Name: [Name]'.", text: "Name: Alice, Name: Bob", solution: 'Name: (\\w+)', expectedMatches: 2 }]
+            },
+            'chapter-15': {
+                title: 'Chapter 15: Advanced Text Processing and Problem Solving - Complex Challenges',
+                sections: [{ id: 'ch15-intro', title: '15.1 Parsing CSV Data', description: 'Tackling more complex text parsing scenarios.', pattern: '(\\w+),(\\d+)', text: 'Apple,100\nBanana,200' }],
+                summary: [{ term: 'Advanced Problems', def: 'Applying regex to solve complex text manipulation tasks.' }],
+                exercises: [{ prompt: "Match a date in DD/MM/YYYY format.", text: "01/01/2023", solution: '^\\d{2}\\/\\d{2}\\/\\d{4}$', expectedMatches: 1 }]
+            }
+        };
+
+        let currentChapterId = 'chapter-1'; // Default chapter
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const navMenu = document.getElementById('nav-menu');
+            const contentSections = document.getElementById('content-sections');
+            const exerciseContainer = document.getElementById('exercise-container');
+            const summaryList = document.getElementById('summary-list');
+            const generatorPrompt = document.getElementById('generator-prompt');
+            const generateRegexBtn = document.getElementById('generate-regex-btn');
+            const generatorResult = document.getElementById('generator-result');
+            const chapterSelect = document.getElementById('chapter-select');
+            const currentChapterTitle = document.getElementById('current-chapter-title');
+            const summaryIntro = document.getElementById('summary-intro');
+            const exercisesIntro = document.getElementById('exercises-intro');
+
+            // Function to call Gemini API
+            async function callGeminiAPI(prompt, targetElement, type = 'text') {
+                targetElement.innerHTML = '<span class="text-neutral-500">Loading...</span>';
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        if (type === 'regex') {
+                            targetElement.textContent = text.trim();
+                        } else {
+                            targetElement.innerHTML = text.replace(/\n/g, '<br>');
+                        }
+                    } else {
+                        targetElement.innerHTML = '<span class="text-red-500">Error: Could not get a response.</span>';
+                    }
+                } catch (error) {
+                    targetElement.innerHTML = `<span class="text-red-500">Error: ${error.message}</span>`;
+                }
+            }
+
+            // Populate Chapter Select Dropdown
+            for (const chapterKey in bookData) {
+                const option = document.createElement('option');
+                option.value = chapterKey;
+                option.textContent = bookData[chapterKey].title;
+                chapterSelect.appendChild(option);
+            }
+
+            // Function to load chapter content
+            const loadChapter = (chapterId) => {
+                const chapter = bookData[chapterId];
+                if (!chapter) return;
+
+                currentChapterId = chapterId;
+                currentChapterTitle.textContent = chapter.title;
+
+                // Clear previous content
+                navMenu.innerHTML = '';
+                contentSections.innerHTML = '';
+                summaryList.innerHTML = '';
+                exerciseContainer.innerHTML = '';
+
+                // Populate Navigation and Content Sections for the current chapter
+                chapter.sections.forEach((item, index) => {
+                    const navLink = document.createElement('a');
+                    navLink.href = `#${item.id}`;
+                    navLink.textContent = item.title;
+                    navLink.className = 'block px-4 py-2 rounded-md text-neutral-600 hover:bg-neutral-100 transition-colors';
+                    navMenu.appendChild(navLink);
+
+                    const section = document.createElement('section');
+                    section.id = item.id;
+                    section.innerHTML = `
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                            <div class="prose max-w-none">
+                                <h3 class="text-2xl font-bold text-neutral-800">${item.title}</h3>
+                                <p class="text-neutral-600">${item.description}</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm">
+                                <div class="mb-4">
+                                    <label for="pattern-${chapterId}-${index}" class="block text-sm font-medium text-neutral-700 mb-1">Regex Pattern:</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="pattern-${chapterId}-${index}" value="${item.pattern}" class="flex-grow p-2 border border-neutral-300 rounded-md font-mono text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                                        <button id="explain-btn-${chapterId}-${index}" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm font-semibold hover:bg-blue-600 transition-colors shrink-0">✨ Explain</button>
+                                    </div>
+                                    <div id="explanation-result-${chapterId}-${index}" class="mt-2 p-2 bg-blue-50 rounded-md text-blue-800 text-xs hidden"></div>
+                                </div>
+                                <div class="mb-4">
+                                    <label for="text-${chapterId}-${index}" class="block text-sm font-medium text-neutral-700 mb-1">Test String:</label>
+                                    <textarea id="text-${chapterId}-${index}" rows="4" class="w-full p-2 border border-neutral-300 rounded-md font-mono text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">${item.text}</textarea>
+                                </div>
+                                <div>
+                                    <p class="block text-sm font-medium text-neutral-700 mb-1">Result:</p>
+                                    <div id="result-${chapterId}-${index}" class="w-full p-3 bg-neutral-50 rounded-md border border-neutral-200 min-h-[6rem]"><pre></pre></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    contentSections.appendChild(section);
+
+                    const patternInput = document.getElementById(`pattern-${chapterId}-${index}`);
+                    const textInput = document.getElementById(`text-${chapterId}-${index}`);
+                    const resultDiv = document.getElementById(`result-${chapterId}-${index}`);
+                    const explainBtn = document.getElementById(`explain-btn-${chapterId}-${index}`);
+                    const explanationResult = document.getElementById(`explanation-result-${chapterId}-${index}`);
+
+                    const updateHighlight = () => {
+                        const pattern = patternInput.value;
+                        const text = textInput.value;
+                        
+                        if (!text) {
+                            resultDiv.querySelector('pre').textContent = '';
+                            return;
+                        }
+
+                        try {
+                            const regex = new RegExp(pattern, 'g');
+                            const highlightedText = text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
+                            resultDiv.querySelector('pre').innerHTML = highlightedText;
+                        } catch (e) {
+                            resultDiv.querySelector('pre').innerHTML = `<span class="text-red-500">Invalid Regex: ${e.message}</span>`;
+                        }
+                    };
+
+                    patternInput.addEventListener('keyup', updateHighlight);
+                    textInput.addEventListener('keyup', updateHighlight);
+                    updateHighlight();
+
+                    explainBtn.addEventListener('click', () => {
+                        const pattern = patternInput.value;
+                        if (pattern.trim() === '') {
+                            explanationResult.textContent = 'Please enter a regex pattern to explain.';
+                            explanationResult.classList.remove('hidden');
+                            return;
+                        }
+                        explanationResult.classList.remove('hidden');
+                        callGeminiAPI(`Explain this regular expression in simple terms: ${pattern}`, explanationResult);
+                    });
+                });
+
+                // Populate Summary for the current chapter
+                summaryIntro.textContent = `This chapter covered key concepts including:`;
+                chapter.summary.forEach(point => {
+                    const li = document.createElement('li');
+                    li.className = "bg-white p-4 rounded-lg border border-neutral-200";
+                    li.innerHTML = `
+                        <h4 class="font-semibold text-teal-700">${point.term}</h4>
+                        <p class="text-neutral-600 text-sm">${point.def}</p>
+                    `;
+                    summaryList.appendChild(li);
+                });
+
+                // Populate Exercises for the current chapter
+                exercisesIntro.textContent = `Test your understanding of the concepts learned in this chapter.`;
+                chapter.exercises.forEach((ex, index) => {
+                    const exerciseEl = document.createElement('div');
+                    exerciseEl.className = "bg-white p-6 rounded-lg border border-neutral-200 shadow-sm";
+                    exerciseEl.innerHTML = `
+                        <p class="font-medium text-neutral-800 mb-2">${index + 1}. ${ex.prompt}</p>
+                        <div class="bg-neutral-100 p-3 rounded-md mb-4 font-mono text-sm text-neutral-600">
+                            <pre>${ex.text}</pre>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-4 items-center">
+                            <input type="text" id="ex-pattern-${chapterId}-${index}" placeholder="Your Regex pattern here" class="flex-grow w-full p-2 border border-neutral-300 rounded-md font-mono text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                            <button id="ex-check-${chapterId}-${index}" class="w-full sm:w-auto bg-teal-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-teal-700 transition-colors">Check Answer</button>
+                        </div>
+                        <p id="ex-result-${chapterId}-${index}" class="mt-3 text-sm font-medium"></p>
+                    `;
+                    exerciseContainer.appendChild(exerciseEl);
+
+                    document.getElementById(`ex-check-${chapterId}-${index}`).addEventListener('click', () => {
+                        const userInput = document.getElementById(`ex-pattern-${chapterId}-${index}`).value;
+                        const resultEl = document.getElementById(`ex-result-${chapterId}-${index}`);
+                        if (!userInput) {
+                            resultEl.textContent = 'Please enter a pattern.';
+                            resultEl.className = 'mt-3 text-sm font-medium text-yellow-600';
+                            return;
+                        }
+
+                        try {
+                            // Use the flags property if available, otherwise default to 'g'
+                            const flags = ex.flags || 'g';
+                            const userRegex = new RegExp(userInput, flags);
+                            const matches = ex.text.match(userRegex) || [];
+                            if (matches.length === ex.expectedMatches) {
+                               resultEl.textContent = `Correct! Found ${matches.length} match(es): ${matches.join(', ')}`;
+                               resultEl.className = 'mt-3 text-sm font-medium text-green-600';
+                            } else {
+                               resultEl.textContent = `Almost! Found ${matches.length} match(es), but expected ${ex.expectedMatches}. Keep trying!`;
+                               resultEl.className = 'mt-3 text-sm font-medium text-orange-600';
+                            }
+                        } catch (e) {
+                             resultEl.textContent = `Invalid Regex pattern: ${e.message}`;
+                             resultEl.className = 'mt-3 text-sm font-medium text-red-600';
+                        }
+                    });
+                });
+
+                // Add regex generator to nav menu
+                const generatorNavLink = document.createElement('a');
+                generatorNavLink.href = '#regex-generator';
+                generatorNavLink.textContent = '✨ Regex Generator';
+                generatorNavLink.className = 'block px-4 py-2 rounded-md text-neutral-600 hover:bg-neutral-100 transition-colors';
+                navMenu.appendChild(generatorNavLink);
+
+                // Re-observe sections for active nav link
+                const allSections = document.querySelectorAll('#content-sections section, #regex-generator, #summary, #exercises');
+                observer.disconnect(); // Disconnect previous observer
+                allSections.forEach(section => {
+                    observer.observe(section);
+                });
+            };
+
+            // Chapter selection change listener
+            chapterSelect.addEventListener('change', (event) => {
+                loadChapter(event.target.value);
+                window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top of new chapter
+            });
+
+            // Regex Generator Logic
+            generateRegexBtn.addEventListener('click', () => {
+                const promptText = generatorPrompt.value.trim();
+                if (promptText === '') {
+                    generatorResult.textContent = 'Please describe the regex you want to generate.';
+                    return;
+                }
+                callGeminiAPI(`Generate a regular expression for the following description: "${promptText}". Provide only the regex pattern, no explanation or surrounding text.`, generatorResult, 'regex');
+            });
+
+            // Active Nav Link on Scroll
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const id = entry.target.getAttribute('id');
+                    const navLink = document.querySelector(`#nav-menu a[href="#${id}"]`);
+                    if (entry.isIntersecting) {
+                        document.querySelectorAll('#nav-menu a').forEach(link => link.classList.remove('nav-active'));
+                        if (navLink) {
+                            navLink.classList.add('nav-active');
+                        }
+                    }
+                });
+            }, { rootMargin: "-30% 0px -70% 0px" });
+
+            // Initial load of the default chapter
+            loadChapter(currentChapterId);
+        });
+    </script>
+</body>
+</html>
+
