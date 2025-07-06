@@ -481,7 +481,16 @@
                         }
 
                         try {
-                            const regex = new RegExp(pattern, 'g');
+                            let patternToUse = pattern;
+                            let flagsToUse = 'g'; // Default to global flag for live playground
+
+                            const regexLiteralMatch = pattern.match(/^\/(.*)\/([a-z]*)$/);
+                            if (regexLiteralMatch && regexLiteralMatch.length === 3) {
+                                patternToUse = regexLiteralMatch[1];
+                                flagsToUse = regexLiteralMatch[2] || '';
+                            }
+
+                            const regex = new RegExp(patternToUse, flagsToUse);
                             const highlightedText = text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
                             resultDiv.querySelector('pre').innerHTML = highlightedText;
                         } catch (e) {
@@ -545,9 +554,16 @@
                         }
 
                         try {
-                            // Use the flags property if available, otherwise default to 'g'
-                            const flags = ex.flags || 'g';
-                            const userRegex = new RegExp(userInput, flags);
+                            let patternToUse = userInput;
+                            let flagsToUse = ex.flags || 'g'; // Default flags from exercise data
+
+                            const regexLiteralMatch = userInput.match(/^\/(.*)\/([a-z]*)$/);
+                            if (regexLiteralMatch && regexLiteralMatch.length === 3) {
+                                patternToUse = regexLiteralMatch[1];
+                                flagsToUse = regexLiteralMatch[2] || '';
+                            }
+                            
+                            const userRegex = new RegExp(patternToUse, flagsToUse);
                             const matches = ex.text.match(userRegex) || [];
                             if (matches.length === ex.expectedMatches) {
                                resultEl.textContent = `Correct! Found ${matches.length} match(es): ${matches.join(', ')}`;
